@@ -1,6 +1,10 @@
-#include <stdio.h>
+#include <cstdio>
+#include "Zeroconf.h"
+#include "Log.h"
 
 int main(){
-  printf("szpoter\n");
+  LOG(debug, "Szpoter");
+  Zeroconf zeroconf;
+  zeroconf.startZeroConfResponseHTTPServer("key");
   return 0;
 }
