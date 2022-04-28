@@ -1,12 +1,17 @@
 #ifndef __ZEROCONF_H__
 #define __ZEROCONF_H__
 
+#include <cstddef>
+#include <cstdint>
+
 class Zeroconf {
 private:
-    int test = 0;
+    char *key = NULL;
 public:
     Zeroconf();
-    void startZeroConfResponseHTTPServer(const char *key);
+    ~Zeroconf();
+    bool setKey(const char *_key);
+    void startZeroConfResponseHTTPServer(uint16_t port);
 };
 
 

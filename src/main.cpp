@@ -5,6 +5,7 @@
 int main(){
   LOG(debug, "Szpoter");
   Zeroconf zeroconf;
-  zeroconf.startZeroConfResponseHTTPServer("key");
+  zeroconf.setKey("xd");
+  zeroconf.startZeroConfResponseHTTPServer(2137);
   return 0;
 }
