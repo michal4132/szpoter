@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.5)
+project (szpoter)
+include_directories(${PROJECT_SOURCE_DIR}/include)
+#add_compile_options(-Wall -Wextra)
+add_executable(szpoter src/main.cpp)
+target_link_libraries(szpoter -lavahi-common -lavahi-client -lpthread -lcrypto -lm -lssl)
