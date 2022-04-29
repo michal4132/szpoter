@@ -8,13 +8,15 @@
 class Zeroconf {
 private:
     char *key = NULL;
-    std::atomic<bool> run = false;
+    std::atomic<bool> run;
 public:
     Zeroconf();
     ~Zeroconf();
     bool setKey(const char *_key);
     void stopZeroConfResponseHTTPServer();
     void startZeroConfResponseHTTPServer(uint16_t port);
+    void zeroConfDiscovery(uint16_t port);
+    void stopZeroConfDiscovery();
 };
 
 
