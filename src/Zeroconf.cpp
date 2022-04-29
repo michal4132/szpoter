@@ -3,6 +3,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
+#include <thread>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -72,14 +73,23 @@ Zeroconf::~Zeroconf() {
         free(key);
         key = NULL;
     }
+    // TODO: Zeroconf::stopZeroConfResponseHTTPServer
+    response_server_thread.join();
 }
 
 void Zeroconf::stopZeroConfResponseHTTPServer() {
-    run = false;
     LOG(debug, "Stopping ZeroConfReponseServer");
+    run = false;
+    // TODO: Fix thread exit, non blocking socket
+    // response_server_thread.join();
+    // LOG(debug, "ZeroConfReponseServer stopped");
 }
 
 void Zeroconf::startZeroConfResponseHTTPServer(uint16_t port) {
+    response_server_thread = std::thread(&Zeroconf::startZeroConfResponseHTTPServer_thread, this, port);
+}
+
+void Zeroconf::startZeroConfResponseHTTPServer_thread(uint16_t port) {
     if(key == NULL) {
         LOG(error, "No public key");
         return;
@@ -111,6 +121,7 @@ void Zeroconf::startZeroConfResponseHTTPServer(uint16_t port) {
     size_t read_len;
 
     while(run) {
+        // TODO: add select
         connfd = accept(sockfd, (struct sockaddr*)NULL, NULL);
 
         read_len = read(connfd, input, SERVER_BUFFER_SIZE);
@@ -281,8 +292,15 @@ static void client_callback(AvahiClient *c, AvahiClientState state, AVAHI_GCC_UN
 }
 
 void Zeroconf::stopZeroConfDiscovery() {
-    avahi_simple_poll_quit(simple_poll);
     LOG(debug, "Stopping ZeroConfDiscovery");
+    avahi_simple_poll_quit(simple_poll);
+    avahi_thread.join();
+    LOG(debug, "ZeroConfDiscovery stopped");
+}
+
+void avahi_loop_thread() {
+    avahi_simple_poll_loop(simple_poll);
+    avahi_simple_poll_free(simple_poll);
 }
 
 void Zeroconf::zeroConfDiscovery(uint16_t port){
@@ -305,8 +323,5 @@ void Zeroconf::zeroConfDiscovery(uint16_t port){
         LOG(error, "Failed to create client: %s", avahi_strerror(error_r));
         return;
     }
-    /* Run the main loop */
-    avahi_simple_poll_loop(simple_poll);
-    LOG(debug, "avahi stopped");
-    avahi_simple_poll_free(simple_poll);
+    avahi_thread = std::thread(avahi_loop_thread);
 }
