@@ -9,8 +9,7 @@ void setSubmodule() {
 void printFilename(std::string filename) {
     std::string basenameStr(filename.substr(filename.rfind("/") + 1));
     unsigned long hash = 5381;
-    for (char const &c : basenameStr)
-    {
+    for (char const &c : basenameStr) {
         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
     }
 

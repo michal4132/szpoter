@@ -63,6 +63,10 @@ Zeroconf::~Zeroconf() {
     key = NULL;
 }
 
+void Zeroconf::stopZeroConfResponseHTTPServer() {
+    run = false;
+}
+
 void Zeroconf::startZeroConfResponseHTTPServer(uint16_t port) {
     if(key == NULL) {
         LOG(error, "No public key");
@@ -94,8 +98,7 @@ void Zeroconf::startZeroConfResponseHTTPServer(uint16_t port) {
     char input[SERVER_BUFFER_SIZE];
     size_t read_len;
 
-    bool run = true;
-    while(run){
+    while(run) {
         connfd = accept(sockfd, (struct sockaddr*)NULL, NULL);
 
         read_len = read(connfd, input, SERVER_BUFFER_SIZE);
@@ -105,7 +108,7 @@ void Zeroconf::startZeroConfResponseHTTPServer(uint16_t port) {
             return;
         }
 
-        if(strncmp(getInfo_request_match, input, strlen(getInfo_request_match)) == 0){
+        if(strncmp(getInfo_request_match, input, strlen(getInfo_request_match)) == 0) {
             char *message = (char *) malloc(strlen(getInfo_response_start) + strlen(key) + strlen(getInfo_response_end));
             strcpy(message, getInfo_response_start);
             strcat(message, (char*)key);
@@ -115,7 +118,7 @@ void Zeroconf::startZeroConfResponseHTTPServer(uint16_t port) {
                 LOG(error, "ERROR writting to socket");
             }
             free(message);
-        }else if(strncmp(post_data_request_match, input, strlen(post_data_request_match)) == 0){
+        } else if(strncmp(post_data_request_match, input, strlen(post_data_request_match)) == 0) {
             if(write(connfd, post_response, strlen(post_response)) != strlen(post_response)) {
                 LOG(error, "ERROR writting to socket");
             }

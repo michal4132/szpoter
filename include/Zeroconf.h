@@ -3,14 +3,17 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <atomic>
 
 class Zeroconf {
 private:
     char *key = NULL;
+    std::atomic<bool> run = false;
 public:
     Zeroconf();
     ~Zeroconf();
     bool setKey(const char *_key);
+    void stopZeroConfResponseHTTPServer();
     void startZeroConfResponseHTTPServer(uint16_t port);
 };
 
