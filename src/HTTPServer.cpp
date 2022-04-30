@@ -132,7 +132,7 @@ void HTTPServer::loop() {
                     }
                     fds_size--;
                 }
-            }size_t to_write = connections[i].tx_buf.size();
+            }
         }
     }
 }

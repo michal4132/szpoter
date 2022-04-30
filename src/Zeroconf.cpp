@@ -36,7 +36,7 @@ static void getInfo_response(Connection *con, void *key) {
         con->send_response_code(200);
         con->send_response_header("Content-type", "application/json");
         con->response_end_header();
-        size_t response_len = strlen(getInfo_JSON) + strlen((char *) key);
+        size_t response_len = strlen(getInfo_JSON) + strlen((char *) key) - 2; // subtract 2 (%s format)
         char *response = (char *) malloc(response_len);
         sprintf(response, getInfo_JSON, (char *) key);
         con->write(response, response_len);
@@ -62,6 +62,7 @@ bool Zeroconf::setKey(const char *_key) {
     size_t key_len = strlen(_key) + 1;
     key = (char *) realloc(key, key_len);
     memcpy(key, _key, key_len);
+    key[key_len] = '\0';
     return true;
 }
 
