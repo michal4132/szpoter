@@ -15,6 +15,7 @@
 #include <thread>
 #include "CircularBuffer.h"
 
+// status mask
 #define CONNECTION_GOT_REQUEST_TYPE 1
 #define CONNECTION_GOT_URL          2
 #define CONNECTION_HEADERS_END      4
@@ -24,13 +25,14 @@
 #define CONNECTION_RESERVED3        64
 #define CONNECTION_CLOSE            128
 
+// http server config
 #define BUFSIZE                     512
 #define MAX_CONNECTIONS             10
 
+// http server routes
 #define ROUTE_CGI(method, url, function)  ROUTE_CGI_ARG(method, url, function, NULL)
 #define ROUTE_CGI_ARG(method, url, function, arg)  {method, url, function, arg}
 #define ROUTE_END() {0, NULL, NULL, NULL}
-
 
 // HTTP Methods
 #define HTTP_GET                    0

@@ -100,14 +100,12 @@ void HTTPServer::loop() {
                     uint16_t r = 0;
                     bool isRoute = false;
                     while(routes[r].url != NULL) {
-                        if(strlen(connections[i].url) == strlen(routes[r].url)) {
-                            if(strncmp(routes[r].url, connections[i].url, strlen(connections[i].url)) == 0) {
-                                if(connections[i].method == routes[r].method) {
-                                    routes[r].cb(&connections[i], routes[r].arg);
-                                    isRoute = true;
-                                    break;
-                                }
-                            }
+                        if( strlen(connections[i].url) == strlen(routes[r].url) &&
+                            strncmp(routes[r].url, connections[i].url, strlen(connections[i].url)) == 0 &&
+                            connections[i].method == routes[r].method) {
+                            routes[r].cb(&connections[i], routes[r].arg);
+                            isRoute = true;
+                            break;
                         }
                         r++;
                     }

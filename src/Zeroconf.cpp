@@ -87,6 +87,7 @@ void Zeroconf::start(uint16_t port) {
         return;
     }
 
+    // static ???
     Routes routes[] = {
         ROUTE_CGI_ARG(HTTP_GET, "/?action=getInfo\0", getInfo_response, key),
         ROUTE_CGI(HTTP_POST, "/", post_response),
