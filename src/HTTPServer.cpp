@@ -5,8 +5,13 @@
 // WIP async web server
 
 HTTPServer::HTTPServer(uint16_t _port, const Routes *_routes) {
-    routes = (Routes *) malloc(sizeof(Routes));
-    memcpy(routes, _routes, sizeof(Routes));
+    // TODO: proper length
+    uint8_t tmp = 0;
+    while(_routes[tmp].url != NULL) {
+        tmp++;
+    }
+    routes = (Routes *) malloc(sizeof(Routes) * tmp);
+    memcpy(routes, _routes, sizeof(Routes) * tmp);
     port = _port;
     server_thread = std::thread(&HTTPServer::loop, this);
 }
@@ -77,7 +82,7 @@ void HTTPServer::loop() {
                             }
                             pos += 1;
                         }
-                        connections[i].rx_buf.write(read_buffer + pos + 3, BUFSIZE - pos - 3);
+                        connections[i].rx_buf.write(read_buffer + pos + 4, BUFSIZE - pos - 4);
                         connections[i].state += CONNECTION_HEADERS_END;
                         connections[i].state += CONNECTION_START_RESPONSE;
                     } else {
@@ -255,8 +260,7 @@ bool Connection::write(const char *buf, size_t len) {
 }
 
 size_t Connection::read(char *buf, size_t len) {
-    rx_buf.read(buf, len);
-    return 0;
+    return rx_buf.read(buf, len);
 }
 
 void Connection::send_response_code(uint16_t code) {

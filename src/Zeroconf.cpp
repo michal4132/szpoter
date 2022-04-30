@@ -46,6 +46,9 @@ static void getInfo_response(Connection *con, void *key) {
 }
 
 static void post_response(Connection *con, void *) {
+    char buf[BUFSIZE];
+    con->read(buf, BUFSIZE);
+    LOG(debug, "user data: %s", buf);
     con->send_response_code(200);
     con->send_response_header("Content-type", "application/json");
     con->response_end_header();
@@ -55,8 +58,6 @@ static void post_response(Connection *con, void *) {
 
 Zeroconf::Zeroconf() {
 }
-
-// int sendClientResponse(char http[2048]);
 
 bool Zeroconf::setKey(const char *_key) {
     size_t key_len = strlen(_key) + 1;
@@ -87,7 +88,7 @@ void Zeroconf::start(uint16_t port) {
     }
 
     Routes routes[] = {
-        ROUTE_CGI_ARG(HTTP_GET, "/?action=getInfo", getInfo_response, key),
+        ROUTE_CGI_ARG(HTTP_GET, "/?action=getInfo\0", getInfo_response, key),
         ROUTE_CGI(HTTP_POST, "/", post_response),
         ROUTE_END()
     };

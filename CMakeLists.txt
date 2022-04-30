@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 project (szpoter)
+set(CMAKE_BUILD_TYPE Debug)
 include_directories(${PROJECT_SOURCE_DIR}/include)
 #add_compile_options(-Wall -Wextra)
 file(GLOB SOURCES "src/*.cpp")
