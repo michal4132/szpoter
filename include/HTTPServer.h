@@ -27,8 +27,9 @@
 #define BUFSIZE                     512
 #define MAX_CONNECTIONS             10
 
-#define ROUTE_CGI(method, url, function)  {method, url, function}
-#define ROUTE_END() {0, NULL, NULL}
+#define ROUTE_CGI(method, url, function)  ROUTE_CGI_ARG(method, url, function, NULL)
+#define ROUTE_CGI_ARG(method, url, function, arg)  {method, url, function, arg}
+#define ROUTE_END() {0, NULL, NULL, NULL}
 
 
 // HTTP Methods
@@ -57,12 +58,13 @@ public:
     void close();
 };
 
-typedef void (*Response_cb)(Connection *con);
+typedef void (*Response_cb)(Connection *con, void *arg);
 
 typedef struct {
     const uint8_t method;
     const char *url;
     Response_cb cb;
+    void *arg;
 } Routes;
 
 class HTTPServer {
@@ -72,7 +74,7 @@ private:
     void sendData(struct pollfd fds, char *fp, size_t data_len);
     std::atomic<bool> running = true;
     char read_buffer[BUFSIZE];
-    const Routes *routes = NULL;
+    Routes *routes = NULL;
     uint16_t port;
     void loop();
 public:

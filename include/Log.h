@@ -19,10 +19,6 @@ namespace logger {
 
 }
 
-#define LOG(type, ...)                                      \
-    do                                                      \
-    {                                                       \
-        logger::type(__FILE__, __LINE__, "szpoter", __VA_ARGS__);   \
-    } while (0)
+#define LOG(type, ...)  logger::type(__FILE__, __LINE__, "szpoter", __VA_ARGS__)
 
 #endif  // __LOG_H__

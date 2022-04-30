@@ -5,7 +5,8 @@
 // WIP async web server
 
 HTTPServer::HTTPServer(uint16_t _port, const Routes *_routes) {
-    routes = _routes;
+    routes = (Routes *) malloc(sizeof(Routes));
+    memcpy(routes, _routes, sizeof(Routes));
     port = _port;
     server_thread = std::thread(&HTTPServer::loop, this);
 }
@@ -94,12 +95,13 @@ void HTTPServer::loop() {
                     uint16_t r = 0;
                     bool isRoute = false;
                     while(routes[r].url != NULL) {
-                        size_t match_len = (strlen(connections[i].url) > strlen(routes[r].url)) ? strlen(connections[i].url) : strlen(routes[r].url);
-                        if(strncmp(routes[r].url, connections[i].url, match_len) == 0) {
-                            if(connections[i].method == routes[r].method) {
-                                routes[r].cb(&connections[i]);
-                                isRoute = true;
-                                break;
+                        if(strlen(connections[i].url) == strlen(routes[r].url)) {
+                            if(strncmp(routes[r].url, connections[i].url, strlen(connections[i].url)) == 0) {
+                                if(connections[i].method == routes[r].method) {
+                                    routes[r].cb(&connections[i], routes[r].arg);
+                                    isRoute = true;
+                                    break;
+                                }
                             }
                         }
                         r++;
