@@ -9,7 +9,6 @@ int main() {
   LOG(debug, "Szpoter");
 
   Zeroconf zeroconf;
-  zeroconf.setKey("xd");
   zeroconf.start(SPOTIFY_DISCOVER_PORT);
 
   // test dynamic cgi

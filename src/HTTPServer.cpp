@@ -5,13 +5,7 @@
 // WIP async web server
 
 HTTPServer::HTTPServer(uint16_t _port, const Routes *_routes) {
-    // TODO: proper length
-    uint8_t tmp = 0;
-    while(_routes[tmp].url != NULL) {
-        tmp++;
-    }
-    routes = (Routes *) malloc(sizeof(Routes) * tmp);
-    memcpy(routes, _routes, sizeof(Routes) * tmp);
+    routes = _routes;
     port = _port;
     server_thread = std::thread(&HTTPServer::loop, this);
 }

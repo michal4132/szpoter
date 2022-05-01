@@ -31,21 +31,21 @@ static const char getInfo_JSON[] =
 static const char post_JSON[] =
     "{\"status\": 101, \"spotifyError\": 0, \"statusString\": \"ERROR-OK\"}";
 
-static void getInfo_response(Connection *con, void *key) {
-    if(key != NULL) {
+static void getInfo_response(Connection *con, void **key) {
+    if(*key != NULL) {
         con->send_response_code(200);
         con->send_response_header("Content-type", "application/json");
         con->response_end_header();
-        size_t response_len = strlen(getInfo_JSON) + strlen((char *) key) - 2; // subtract 2 (%s format)
+        size_t response_len = strlen(getInfo_JSON) + strlen((char *) *key) - 2; // subtract 2 (%s format)
         char *response = (char *) malloc(response_len);
-        sprintf(response, getInfo_JSON, (char *) key);
+        sprintf(response, getInfo_JSON, (char *) *key);
         con->write(response, response_len);
         free(response);
     }
     con->close();
 }
 
-static void post_response(Connection *con, void *) {
+static void post_response(Connection *con, void **) {
     char buf[BUFSIZE];
     con->read(buf, BUFSIZE);
     LOG(debug, "user data: %s", buf);
@@ -82,14 +82,8 @@ void Zeroconf::stop() {
 }
 
 void Zeroconf::start(uint16_t port) {
-    if(key == NULL) {
-        LOG(error, "No public key");
-        return;
-    }
-
-    // static ???
-    Routes routes[] = {
-        ROUTE_CGI_ARG(HTTP_GET, "/?action=getInfo\0", getInfo_response, key),
+    static Routes routes[] = {
+        ROUTE_CGI_ARG(HTTP_GET, "/?action=getInfo\0", getInfo_response, (void **)&key),
         ROUTE_CGI(HTTP_POST, "/", post_response),
         ROUTE_END()
     };

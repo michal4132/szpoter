@@ -60,13 +60,13 @@ public:
     void close();
 };
 
-typedef void (*Response_cb)(Connection *con, void *arg);
+typedef void (*Response_cb)(Connection *con, void **arg);
 
 typedef struct {
     const uint8_t method;
     const char *url;
     Response_cb cb;
-    void *arg;
+    void **arg;
 } Routes;
 
 class HTTPServer {
@@ -76,7 +76,7 @@ private:
     void sendData(struct pollfd fds, char *fp, size_t data_len);
     std::atomic<bool> running = true;
     char read_buffer[BUFSIZE];
-    Routes *routes = NULL;
+    const Routes *routes = NULL;
     uint16_t port;
     void loop();
 public:
