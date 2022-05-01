@@ -149,12 +149,12 @@ void HTTPServer::loop() {
                 char *tmp = (char *) malloc(to_write);
                 con->tx_buf.read(tmp, to_write);
                 sendData(fds[i], tmp, to_write);
+                free(tmp);
                 con->tx_buf.emptyBuffer();
 
                 if (con->state & CONNECTION_CLOSE) {
                     con->clear();
                     close(fds[i].fd);
-                    con->id = -1;
 
                     for (j = i; j < fds_size - 1; ++j) {
                         fds[j] = fds[j + 1];
@@ -223,7 +223,7 @@ int create_connection(uint16_t port) {
 
 int newcon(struct pollfd *fds, int i, int fds_size) {
     struct sockaddr_storage remoteaddr;
-    socklen_t addrlen;
+    socklen_t addrlen = 0;
     fds_size++;
     fds[fds_size - 1].fd = accept(fds[i].fd,
                                   (struct sockaddr *)&remoteaddr,
@@ -353,6 +353,7 @@ void Connection::clear() {
     tx_buf.emptyBuffer();
     rx_buf.emptyBuffer();
     state = 0;
+    id = -1;
 }
 
 void Connection::close() {
