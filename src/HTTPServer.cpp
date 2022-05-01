@@ -10,6 +10,24 @@ HTTPServer::HTTPServer(uint16_t _port, const Routes *_routes) {
     server_thread = std::thread(&HTTPServer::loop, this);
 }
 
+int16_t HTTPServer::fdsToConnectionNum(uint16_t fds) {
+    for (uint16_t i = 0; i < MAX_CONNECTIONS; ++i) {
+        if(connections[i].id == fds) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int16_t HTTPServer::getEmpty() {
+    for (uint16_t i = 0; i < MAX_CONNECTIONS; ++i) {
+        if(connections[i].id == -1) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 void HTTPServer::loop() {
     int listener;
     int i, j, k;
@@ -32,39 +50,48 @@ void HTTPServer::loop() {
                 if (fds[i].fd == listener) {
                     // new connection
                     fds_size = newcon(fds, i, fds_size);
-                    connections[i + 1].state = 0;
-                    fds[fds_size - 1].events = POLLIN;
+                    int16_t id = getEmpty();
+                    if(id != -1) {
+                        connections[id].state = 0;
+                        connections[id].id = fds_size - 1;
+                        fds[fds_size - 1].events = POLLIN;
+                    } else {
+                        LOG(error, "Max connections");
+                        close(fds[fds_size - 1].fd);
+                    }
                     break;
                 } else {
+                    Connection *con = &connections[fdsToConnectionNum(i)];
+
                     // start parsing
                     uint32_t pos = 0;
                     size_t data_len = recvData(fds[i], read_buffer, BUFSIZE);
 
                     // parse request type
-                    if(!(connections[i].state & CONNECTION_GOT_REQUEST_TYPE)) {
+                    if(!(con->state & CONNECTION_GOT_REQUEST_TYPE)) {
                         for(uint8_t l = 0; l < sizeof(http_methods)/sizeof(char *); ++l) {
                             uint16_t len = strlen(http_methods[l]);
                             if(strncmp(http_methods[l], read_buffer, len) == 0) {
                                 pos += (len + 1);
-                                connections[i].method = l;
+                                con->method = l;
                                 break;
                             }
                         }
-                        connections[i].state += CONNECTION_GOT_REQUEST_TYPE;
+                        con->state += CONNECTION_GOT_REQUEST_TYPE;
                     }
 
                     // parse url
-                    if(!(connections[i].state & CONNECTION_GOT_URL)) {
+                    if(!(con->state & CONNECTION_GOT_URL)) {
                         k = 0;
                         while(*(read_buffer + pos + k) != ' ') k += 1; // skip until space
-                        connections[i].url = (char *) malloc(k + 1);
-                        memcpy(connections[i].url, read_buffer + pos, k);
-                        connections[i].url[k] = '\0';
-                        connections[i].state += CONNECTION_GOT_URL;
+                        con->url = (char *) malloc(k + 1);
+                        memcpy(con->url, read_buffer + pos, k);
+                        con->url[k] = '\0';
+                        con->state += CONNECTION_GOT_URL;
                     }
 
                     // read until data
-                    if(!(connections[i].state & CONNECTION_HEADERS_END)) {
+                    if(!(con->state & CONNECTION_HEADERS_END)) {
                         while(true) {
                             if(pos + 4 > BUFSIZE) break; // no data
 
@@ -76,28 +103,32 @@ void HTTPServer::loop() {
                             }
                             pos += 1;
                         }
-                        connections[i].rx_buf.write(read_buffer + pos + 4, BUFSIZE - pos - 4);
-                        connections[i].state += CONNECTION_HEADERS_END;
-                        connections[i].state += CONNECTION_START_RESPONSE;
+                        con->rx_buf.write(read_buffer + pos + 4, BUFSIZE - pos - 4);
+                        con->state += CONNECTION_HEADERS_END;
+                        con->state += CONNECTION_START_RESPONSE;
                     } else {
-                        connections[i].rx_buf.write(read_buffer + pos, BUFSIZE - pos);
+                        con->rx_buf.write(read_buffer + pos, BUFSIZE - pos);
                     }
 
                     fds[i].events = POLLOUT;
                 }
             }
-            if(fds[i].revents & POLLOUT){
+            if (fds[i].revents & POLLOUT){
+                int16_t id = fdsToConnectionNum(i);
+                Connection *con = &connections[id];
                 // send http response
-                if(connections[i].state & CONNECTION_GOT_URL) {
-                    LOG(debug, "%s Request %s", http_methods[connections[i].method], connections[i].url);
+                if (con->state & CONNECTION_GOT_URL) {
+                    if (!(con->state & CONNECTION_HEADERS_SENT)) {
+                        LOG(debug, "%s Request %s", http_methods[con->method], con->url);
+                    }
 
                     uint16_t r = 0;
                     bool isRoute = false;
                     while(routes[r].url != NULL) {
-                        if( strlen(connections[i].url) == strlen(routes[r].url) &&
-                            strncmp(routes[r].url, connections[i].url, strlen(connections[i].url)) == 0 &&
-                            connections[i].method == routes[r].method) {
-                            routes[r].cb(&connections[i], routes[r].arg);
+                        if( strlen(con->url) == strlen(routes[r].url) &&
+                            strncmp(routes[r].url, con->url, strlen(con->url)) == 0 &&
+                            con->method == routes[r].method) {
+                            routes[r].cb(con, routes[r].arg);
                             isRoute = true;
                             break;
                         }
@@ -106,28 +137,35 @@ void HTTPServer::loop() {
 
                     // not found
                     if(!isRoute) {
-                        connections[i].send_response_code(404);
-                        connections[i].send_response_header("Content-type", "text/html");
-                        connections[i].response_end_header();
-                        connections[i].write("404 File Not Found", strlen("404 File Not Found"));
-                        connections[i].close();
+                        con->send_response_code(404);
+                        con->send_response_header("Content-type", "text/html");
+                        con->response_end_header();
+                        con->write("404 File Not Found", strlen("404 File Not Found"));
+                        con->close();
                     }
                 }
 
-                size_t to_write = connections[i].tx_buf.size();
+                size_t to_write = con->tx_buf.size();
                 char *tmp = (char *) malloc(to_write);
-                connections[i].tx_buf.read(tmp, to_write);
+                con->tx_buf.read(tmp, to_write);
                 sendData(fds[i], tmp, to_write);
-                connections[i].tx_buf.emptyBuffer();
+                con->tx_buf.emptyBuffer();
 
-                if(connections[i].state & CONNECTION_CLOSE) {
-                    connections[i].clear();
+                if (con->state & CONNECTION_CLOSE) {
+                    con->clear();
                     close(fds[i].fd);
+                    con->id = -1;
 
-                    for(j = i; j < fds_size - 1; j++) {
-                        fds[j] = fds[j+1];
+                    for (j = i; j < fds_size - 1; ++j) {
+                        fds[j] = fds[j + 1];
                     }
                     fds_size--;
+
+                    for (j = id; j < MAX_CONNECTIONS - id; ++j) {
+                        if (connections[j].id > -1) {
+                            connections[j].id--;
+                        }
+                    }
                 }
             }
         }
@@ -237,7 +275,9 @@ void HTTPServer::sendData(struct pollfd fds, char *fp, size_t data_len) {
 
 Connection::Connection() {
     url = NULL;
+    data = NULL;
     state = 0;
+    id = -1;
 }
 
 Connection::~Connection() {
@@ -302,6 +342,10 @@ void Connection::send_response_header(const char *name, const char *value) {
 
 void Connection::response_end_header() {
     tx_buf.write("\r\n", 2);
+    if(state & CONNECTION_HEADERS_SENT) {
+        return;
+    }
+    state += CONNECTION_HEADERS_SENT;
 }
 
 void Connection::clear() {

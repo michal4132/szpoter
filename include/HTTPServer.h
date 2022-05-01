@@ -16,14 +16,14 @@
 #include "CircularBuffer.h"
 
 // status mask
-#define CONNECTION_GOT_REQUEST_TYPE 1
-#define CONNECTION_GOT_URL          2
-#define CONNECTION_HEADERS_END      4
-#define CONNECTION_START_RESPONSE   8
-#define CONNECTION_RESERVED1        16
-#define CONNECTION_RESERVED2        32
-#define CONNECTION_RESERVED3        64
-#define CONNECTION_CLOSE            128
+#define CONNECTION_GOT_REQUEST_TYPE 1   // parsed request type
+#define CONNECTION_GOT_URL          2   // parsed url
+#define CONNECTION_HEADERS_END      4   // received all headers
+#define CONNECTION_START_RESPONSE   8   // unused
+#define CONNECTION_HEADERS_SENT     16  // user sent headers
+#define CONNECTION_RESERVED1        32  // unused
+#define CONNECTION_RESERVED2        64  // unused
+#define CONNECTION_CLOSE            128 // signal connection close
 
 // http server config
 #define BUFSIZE                     512
@@ -47,6 +47,8 @@ public:
     uint8_t state;
     char *url;
     uint8_t method;
+    void *data;
+    int16_t id;
     CircularBuffer tx_buf = CircularBuffer(BUFSIZE);
     CircularBuffer rx_buf = CircularBuffer(BUFSIZE);
     Connection();
@@ -74,13 +76,15 @@ private:
     std::thread server_thread;
     size_t recvData(struct pollfd fds, char *fp, size_t max_len);
     void sendData(struct pollfd fds, char *fp, size_t data_len);
+    int16_t fdsToConnectionNum(uint16_t fds);
+    int16_t getEmpty();
     std::atomic<bool> running = true;
     char read_buffer[BUFSIZE];
     const Routes *routes = NULL;
     uint16_t port;
     void loop();
 public:
-    Connection connections[MAX_CONNECTIONS + 1];
+    Connection connections[MAX_CONNECTIONS];
     HTTPServer(uint16_t port, const Routes *_routes);
     ~HTTPServer();
     void stop();

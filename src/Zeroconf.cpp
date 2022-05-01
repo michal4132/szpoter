@@ -1,5 +1,6 @@
 #include "Zeroconf.h"
 #include "Log.h"
+#include "Utils.h"
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
@@ -56,6 +57,32 @@ static void post_response(Connection *con, void **) {
     con->close();
 }
 
+static void test_response(Connection *con, void **) {
+    if (!(con->state & CONNECTION_HEADERS_SENT)) { // connection init
+        con->send_response_code(200);
+        con->send_response_header("Content-type", "application/json");
+        con->response_end_header();
+        if(con->data != NULL) free(con->data);
+        con->data = (int *) malloc(sizeof(int));
+        (*(int *)(con->data)) = 0;
+        return;
+    }
+
+    if ((*(int *)(con->data)) <= 10) {
+        char buf[BUFSIZE];
+        snprintf(buf, BUFSIZE, "%d", (*(int *)(con->data)));
+        con->write("xd\n", strlen("xd\n"));
+        con->write(buf, strlen(buf));
+        (*(int *)(con->data))++;
+        SLEEP_MS(100);
+    } else {
+        LOG(debug, "close");
+        con->close();
+        free(con->data);
+        con->data = NULL;
+    }
+}
+
 Zeroconf::Zeroconf() {
 }
 
@@ -84,6 +111,7 @@ void Zeroconf::stop() {
 void Zeroconf::start(uint16_t port) {
     static Routes routes[] = {
         ROUTE_CGI_ARG(HTTP_GET, "/?action=getInfo\0", getInfo_response, (void **)&key),
+        ROUTE_CGI(HTTP_GET, "/test", test_response),
         ROUTE_CGI(HTTP_POST, "/", post_response),
         ROUTE_END()
     };
