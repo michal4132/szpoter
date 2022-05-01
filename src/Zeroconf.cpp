@@ -47,24 +47,72 @@ static void getInfo_response(Connection *con, void **key) {
 }
 
 static void post_response(Connection *con, void **) {
-    char buf[BUFSIZE];
-    con->read(buf, BUFSIZE);
-    LOG(debug, "user data: %s", buf);
-    con->send_response_code(200);
-    con->send_response_header("Content-type", "application/json");
-    con->response_end_header();
-    con->write(post_JSON, strlen(post_JSON));
-    con->close();
+    if (!(con->state & CONNECTION_HEADERS_SENT)) { // connection init
+        con->send_response_code(200);
+        con->send_response_header("Content-type", "application/json");
+        con->response_end_header();
+        con->write(post_JSON, strlen(post_JSON));
+
+        if (con->data != NULL) free(con->data);
+        con->data = (int *) malloc(sizeof(int));
+        (*(int *)(con->data)) = 0;
+    }
+
+    if (con->rx_buf.size() > 0) {
+        char buf[BUFSIZE];
+        (*(int *)(con->data)) += con->rx_buf.read(buf, BUFSIZE);
+        LOG(debug, "user data: %s, len: %d", buf, (*(int *)(con->data)));
+    }
+
+    if ((*(int *)(con->data)) >= con->context_length) {
+        con->close();
+        free(con->data);
+        con->data = NULL;
+    }
 }
+
+// reference
+// static void image_response(Connection *con, void **) {
+//     if (!(con->state & CONNECTION_HEADERS_SENT)) { // connection init
+//         con->send_response_code(200);
+//         con->send_response_header("Content-type", "image/png");
+//         con->response_end_header();
+//
+//         if(con->data != NULL) free(con->data);
+//         con->data = (int *) malloc(sizeof(int));
+//         (*(int *)(con->data)) = 0;
+//
+//         return;
+//     }
+//
+//     int img_left = sizeof(image404) - (*(int *)(con->data));
+//     int to_write = con->tx_buf.capacity() - con->tx_buf.size();
+//
+//     if(img_left <= to_write) {
+//         to_write = img_left;
+//     }
+//
+//     con->write((char *)image404+(*(int *)(con->data)), to_write);
+//     LOG(debug, "wrote: %d, left: %d", to_write, img_left);
+//     (*(int *)(con->data)) += to_write;
+//
+//     if(img_left == 0) {
+//         con->close();
+//         free(con->data);
+//         con->data = NULL;
+//     }
+// }
 
 static void test_response(Connection *con, void **) {
     if (!(con->state & CONNECTION_HEADERS_SENT)) { // connection init
         con->send_response_code(200);
         con->send_response_header("Content-type", "application/json");
         con->response_end_header();
+
         if(con->data != NULL) free(con->data);
         con->data = (int *) malloc(sizeof(int));
         (*(int *)(con->data)) = 0;
+
         return;
     }
 

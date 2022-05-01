@@ -2,7 +2,11 @@
 #include "Log.h"
 #include "Utils.h"
 
-// WIP async web server
+size_t readHTMLEnd(char *buf) {
+    size_t i = 0;
+    while(!(buf[i] == '\r' && buf[i+1] == '\n')) { i++; };
+    return i + 2;
+}
 
 HTTPServer::HTTPServer(uint16_t _port, const Routes *_routes) {
     routes = _routes;
@@ -61,11 +65,20 @@ void HTTPServer::loop() {
                     }
                     break;
                 } else {
+                    fds[i].events = POLLOUT;
                     Connection *con = &connections[fdsToConnectionNum(i)];
 
                     // start parsing
+                    size_t data_len;
+                    if(con->state & CONNECTION_HEADERS_END) {
+                        // only write data to connection buffer
+                        data_len = recvData(fds[i], read_buffer, con->rx_buf.available());
+                        con->rx_buf.write(read_buffer, data_len);
+                        break;
+                    } else {
+                        data_len = recvData(fds[i], read_buffer, BUFSIZE);
+                    }
                     uint32_t pos = 0;
-                    size_t data_len = recvData(fds[i], read_buffer, BUFSIZE);
 
                     // parse request type
                     if(!(con->state & CONNECTION_GOT_REQUEST_TYPE)) {
@@ -88,32 +101,32 @@ void HTTPServer::loop() {
                         memcpy(con->url, read_buffer + pos, k);
                         con->url[k] = '\0';
                         con->state += CONNECTION_GOT_URL;
+                        readHTMLEnd(read_buffer+pos);
+                        pos += readHTMLEnd(read_buffer+pos);
                     }
 
                     // read until data
                     if(!(con->state & CONNECTION_HEADERS_END)) {
                         while(true) {
-                            if(pos + 4 > BUFSIZE) break; // no data
+                            size_t header_len = readHTMLEnd(read_buffer + pos);
 
-                            if( (*(read_buffer + pos    ) == '\r') &&
-                                (*(read_buffer + pos + 1) == '\n') &&
-                                (*(read_buffer + pos + 2) == '\r') &&
-                                (*(read_buffer + pos + 3) == '\n') ) {
-                                break; // data
+                            if(strncmp(read_buffer + pos, "\r\n", 2) == 0) {
+                                pos += header_len;
+                                break;
+                            } else if(strncmp(read_buffer + pos, "Content-Length", 14) == 0) {
+                                con->context_length = atoi(read_buffer + pos + 16);
                             }
-                            pos += 1;
+
+                            pos += header_len;
                         }
-                        con->rx_buf.write(read_buffer + pos + 4, BUFSIZE - pos - 4);
+                        con->rx_buf.write(read_buffer + pos, data_len - pos);
                         con->state += CONNECTION_HEADERS_END;
                         con->state += CONNECTION_START_RESPONSE;
-                    } else {
-                        con->rx_buf.write(read_buffer + pos, BUFSIZE - pos);
                     }
-
-                    fds[i].events = POLLOUT;
                 }
             }
             if (fds[i].revents & POLLOUT){
+                fds[i].events = POLLIN;
                 int16_t id = fdsToConnectionNum(i);
                 Connection *con = &connections[id];
                 // send http response
@@ -150,7 +163,6 @@ void HTTPServer::loop() {
                 con->tx_buf.read(tmp, to_write);
                 sendData(fds[i], tmp, to_write);
                 free(tmp);
-                con->tx_buf.emptyBuffer();
 
                 if (con->state & CONNECTION_CLOSE) {
                     con->clear();
@@ -278,6 +290,7 @@ Connection::Connection() {
     data = NULL;
     state = 0;
     id = -1;
+    context_length = -1;
 }
 
 Connection::~Connection() {

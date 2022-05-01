@@ -1,8 +1,6 @@
 #ifndef __CIRCULARBUFFER_H__
 #define __CIRCULARBUFFER_H__
 
-#include <vector>
-#include <algorithm>
 #include <mutex>
 #include <cstring>
 
@@ -12,6 +10,7 @@ public:
     ~CircularBuffer();
 
     size_t size() const { return dataSize; }
+    size_t available() const { return dataCapacity - dataSize; }
     size_t capacity() const { return dataCapacity; }
     size_t write(const char *data, size_t bytes);
     size_t read(char *data, size_t bytes);

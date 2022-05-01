@@ -49,6 +49,7 @@ public:
     uint8_t method;
     void *data;
     int16_t id;
+    int context_length;
     CircularBuffer tx_buf = CircularBuffer(BUFSIZE);
     CircularBuffer rx_buf = CircularBuffer(BUFSIZE);
     Connection();

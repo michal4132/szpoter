@@ -2,6 +2,7 @@
 #include "Zeroconf.h"
 #include "Log.h"
 #include "Utils.h"
+#include "Crypto.h"
 
 #define SPOTIFY_DISCOVER_PORT 2137
 
@@ -11,12 +12,12 @@ int main() {
   Zeroconf zeroconf;
   zeroconf.start(SPOTIFY_DISCOVER_PORT);
 
-  // test dynamic cgi
-  char buf[20];
-  int i = 0;
+  Crypto crypto;
+  crypto.DHInit();
+  char *key = crypto.getKey();
+  zeroconf.setKey(key);
+
   while(true) {
-    sprintf(buf, "%d", i++);
-    zeroconf.setKey(buf);
     SLEEP_MS(1000);
   }
 

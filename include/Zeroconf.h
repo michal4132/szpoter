@@ -7,7 +7,6 @@
 #include <thread>
 #include "HTTPServer.h"
 
-
 class Zeroconf {
 private:
     char *key = NULL;
