@@ -49,15 +49,15 @@ bool HTTPServer::findRoute(Connection *con) {
 }
 
 void HTTPServer::loop() {
-    int i, j, k;
-    fds_size = 0;
-
     int listener = create_connection(port);
+
+    if (listener < 0)
+        return;
 
     // prevent exit on broken pipe
     signal(SIGPIPE, SIG_IGN);
 
-    fds_size++;
+    fds_size = 1;
     fds[0].fd = listener;
     fds[0].events = POLLIN;
 
@@ -65,7 +65,7 @@ void HTTPServer::loop() {
 
     while (running) {
         poll(fds, fds_size, 1000);
-        for (i = 0; i < fds_size; i++) {
+        for (uint16_t i = 0; i < fds_size; i++) {
             if (fds[i].revents & POLLIN) {
                 if (fds[i].fd == listener) {
                     // new connection
@@ -111,7 +111,7 @@ void HTTPServer::loop() {
 
                     // parse url
                     if (!(con->state & CONNECTION_GOT_URL)) {
-                        k = readUntil(read_buffer + pos, ' ', BUFSIZE - pos);
+                        size_t k = readUntil(read_buffer + pos, ' ', BUFSIZE - pos);
                         con->url = (char *) malloc(k + 1);
                         memcpy(con->url, read_buffer + pos, k);
                         con->url[k] = '\0';
@@ -231,11 +231,13 @@ int create_connection(uint16_t port) {
 
     if (p == NULL) {
         LOG(error, "server: can't bind");
+        return -1;
     }
 
     freeaddrinfo(ai);
     if (listen(listener, MAX_CONNECTIONS) == -1) {
-        LOG(error, "server: listen");
+        LOG(error, "server: listen error");
+        return -1;
     }
     return listener;
 }

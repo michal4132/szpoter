@@ -85,7 +85,7 @@ private:
     char read_buffer[BUFSIZE];
     const Routes *routes = NULL;
     uint16_t port;
-    int fds_size;
+    uint16_t fds_size;
     struct pollfd fds[MAX_CONNECTIONS + 1];
     void loop();
 public:
