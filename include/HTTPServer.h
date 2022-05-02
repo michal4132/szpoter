@@ -76,13 +76,17 @@ class HTTPServer {
 private:
     std::thread server_thread;
     size_t recvData(struct pollfd fds, char *fp, size_t max_len);
-    void sendData(struct pollfd fds, char *fp, size_t data_len);
+    bool sendData(struct pollfd fds, char *fp, size_t data_len);
     int16_t fdsToConnectionNum(uint16_t fds);
     int16_t getEmpty();
+    bool findRoute(Connection *con);
+    void removeConnection(uint16_t i, uint16_t id);
     std::atomic<bool> running = true;
     char read_buffer[BUFSIZE];
     const Routes *routes = NULL;
     uint16_t port;
+    int fds_size;
+    struct pollfd fds[MAX_CONNECTIONS + 1];
     void loop();
 public:
     Connection connections[MAX_CONNECTIONS];
